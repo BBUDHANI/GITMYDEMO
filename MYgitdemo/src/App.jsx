@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, Typography, Box, Drawer, List, ListItemButton, ListItemText
@@ -10,18 +11,23 @@ const drawerWidth = 240;
 
 function App() {
   const [students, setStudents] = useState([]);
-  const [columns, setColumns] = useState([]);
+  const [columns, setColumns] = useState([
+    { header: 'Student ID', accessor: 'id' },
+    { header: 'Name', accessor: 'name' },
+    { header: 'Courses', accessor: 'courses' }
+  ]);
 
   useEffect(() => {
     const savedStudents = localStorage.getItem('students');
     const savedColumns = localStorage.getItem('tableColumns');
 
-    setStudents(savedStudents ? JSON.parse(savedStudents) : []);
-    setColumns(savedColumns ? JSON.parse(savedColumns) : [
-      { header: 'Student ID', accessor: 'id' },
-      { header: 'Name', accessor: 'name' },
-      { header: 'Courses', accessor: 'courses' }
-    ]);
+    if (savedStudents) {
+      setStudents(JSON.parse(savedStudents));
+    }
+
+    if (savedColumns) {
+      setColumns(JSON.parse(savedColumns));
+    }
   }, []);
 
   useEffect(() => {
@@ -62,8 +68,28 @@ function App() {
           </AppBar>
           <Toolbar />
           <Routes>
-            <Route path="/" element={<StudentApplicationView students={students} setStudents={setStudents} columns={columns} setColumns={setColumns} />} />
-            <Route path="/table" element={<TableView students={students} setStudents={setStudents} columns={columns} setColumns={setColumns} />} />
+            <Route
+              path="/"
+              element={
+                <StudentApplicationView
+                  students={students}
+                  setStudents={setStudents}
+                  columns={columns}
+                  setColumns={setColumns}
+                />
+              }
+            />
+            <Route
+              path="/table"
+              element={
+                <TableView
+                  students={students}
+                  setStudents={setStudents}
+                  columns={columns}
+                  setColumns={setColumns}
+                />
+              }
+            />
           </Routes>
         </Box>
       </Box>
@@ -72,18 +98,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

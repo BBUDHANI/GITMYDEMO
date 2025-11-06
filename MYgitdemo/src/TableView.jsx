@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Container, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
@@ -6,20 +7,36 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-function TableView({ students, setStudents, columns, setColumns }) {
-  const [rows, setRows] = useState([]);
+function TableView() {
+  const [students, setStudents] = useState([]);
+  const [columns, setColumns] = useState([]);
   const [newColumnName, setNewColumnName] = useState('');
   const [editRowIndex, setEditRowIndex] = useState(null);
   const [editValues, setEditValues] = useState({});
 
   useEffect(() => {
-    setRows(students);
-  }, [students]);
+    loadSavedData();
+  }, []);
+
+  const loadSavedData = () => {
+    const savedStudents = localStorage.getItem('students');
+    const savedColumns = localStorage.getItem('tableColumns');
+
+    if (savedStudents) {
+      setStudents(JSON.parse(savedStudents));
+    }
+    if (savedColumns) {
+      setColumns(JSON.parse(savedColumns));
+    }
+  };
 
   const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
+
     const newAccessor = newColumnName.toLowerCase().replace(/\s+/g, '_');
+
     if (columns.some(col => col.accessor === newAccessor)) {
       alert('Column already exists!');
       return;
@@ -30,15 +47,15 @@ function TableView({ students, setStudents, columns, setColumns }) {
     setColumns(updatedColumns);
     localStorage.setItem('tableColumns', JSON.stringify(updatedColumns));
 
-    const updatedRows = rows.map(r => ({ ...r, [newAccessor]: '' }));
-    setRows(updatedRows);
-    setStudents(updatedRows);
+    const updatedStudents = students.map(s => ({ ...s, [newAccessor]: '' }));
+    setStudents(updatedStudents);
+    localStorage.setItem('students', JSON.stringify(updatedStudents));
     setNewColumnName('');
   };
 
-  const handleEdit = i => {
-    setEditRowIndex(i);
-    setEditValues({ ...rows[i] });
+  const handleEdit = (index) => {
+    setEditRowIndex(index);
+    setEditValues({ ...students[index] });
   };
 
   const handleChange = (accessor, value) => {
@@ -46,72 +63,105 @@ function TableView({ students, setStudents, columns, setColumns }) {
   };
 
   const handleSave = () => {
-    const updated = [...rows];
+    const updated = [...students];
     updated[editRowIndex] = editValues;
-    setRows(updated);
     setStudents(updated);
+    localStorage.setItem('students', JSON.stringify(updated));
     setEditRowIndex(null);
     setEditValues({});
   };
 
- 
+  const handleDelete = (index) => {
+    const updated = students.filter((_, i) => i !== index);
+    setStudents(updated);
+    localStorage.setItem('students', JSON.stringify(updated));
+  };
+
+  const handleSaveAll = () => {
+    localStorage.setItem('students', JSON.stringify(students));
+    localStorage.setItem('tableColumns', JSON.stringify(columns));
+    alert('Table content saved successfully!');
+  };
+
+  const handleExportToNotepad = () => {
+    if (columns.length === 0 || students.length === 0) {
+      alert('No data to export!');
+      return;
+    }
+
+    // Create header row
+    const headers = columns.map(col => col.header);
+    const headerLine = headers.join('\t');
+
+    // Create student rows
+    const rows = students.map(student =>
+      columns.map(col => student[col.accessor] || '').join('\t')
+    );
+
+    // Combine all lines
+    const tableText = [headerLine, ...rows].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([tableText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'student_table_data.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <Container sx={{ mt: 4 }}>
-      <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
-        <TextField label="New Column Name" value={newColumnName} onChange={e => setNewColumnName(e.target.value)} size="small" />
+    <Container>
+      <Box display="flex" gap={2} my={2}>
+        <TextField
+          label="New Column Name"
+          value={newColumnName}
+          onChange={(e) => setNewColumnName(e.target.value)}
+        />
         <Button variant="contained" onClick={handleAddColumn}>Add Column</Button>
+        <Button variant="outlined" onClick={handleSaveAll}>Save All</Button>
+        <Button variant="outlined" onClick={handleExportToNotepad}>View Saved Table</Button>
       </Box>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              {columns.map((col, index) => (
-                <TableCell key={index}>{col.header}</TableCell>
+              {columns.map((col, idx) => (
+                <TableCell key={idx}>{col.header}</TableCell>
               ))}
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {columns.map((col, colIndex) => (
-                  <TableCell key={colIndex}>
-                    {editRowIndex === rowIndex ? (
-                      Array.isArray(editValues[col.accessor]) ? (
-                        <TextField
-                          value={editValues[col.accessor]?.join(', ') || ''}
-                          onChange={e =>
-                            handleChange(
-                              col.accessor,
-                              e.target.value.split(',').map(item => item.trim())
-                            )
-                          }
-                          size="small"
-                        />
-                      ) : (
-                        <TextField
-                          value={editValues[col.accessor] ?? ''}
-                          onChange={e => handleChange(col.accessor, e.target.value)}
-                          size="small"
-                        />
-                      )
-                    ) : Array.isArray(row[col.accessor]) ? (
-                      row[col.accessor].map((item, i) => (
-                        <Chip key={i} label={item} sx={{ mr: 0.5 }} />
-                      ))
+            {students.map((student, index) => (
+              <TableRow key={index}>
+                {columns.map((col, idx) => (
+                  <TableCell key={idx}>
+                    {editRowIndex === index ? (
+                      <TextField
+                        value={editValues[col.accessor] || ''}
+                        onChange={(e) => handleChange(col.accessor, e.target.value)}
+                      />
                     ) : (
-                      row[col.accessor] ?? ''
+                      <Chip label={student[col.accessor]} />
                     )}
                   </TableCell>
                 ))}
                 <TableCell>
-                  {editRowIndex === rowIndex ? (
+                  {editRowIndex === index ? (
                     <>
-                      <IconButton color="primary" onClick={handleSave}><SaveIcon /></IconButton>
-                      <IconButton color="error" onClick={() => setEditRowIndex(null)}><CancelIcon /></IconButton>
+                      <IconButton onClick={handleSave}><SaveIcon /></IconButton>
+                      <IconButton onClick={() => setEditRowIndex(null)}><CancelIcon /></IconButton>
                     </>
                   ) : (
-                    <IconButton color="secondary" onClick={() => handleEdit(rowIndex)}><EditIcon /></IconButton>
+                    <>
+                      <IconButton onClick={() => handleEdit(index)}><EditIcon /></IconButton>
+                      <IconButton onClick={() => handleDelete(index)}><DeleteIcon /></IconButton>
+                    </>
                   )}
                 </TableCell>
               </TableRow>
@@ -124,29 +174,3 @@ function TableView({ students, setStudents, columns, setColumns }) {
 }
 
 export default TableView;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
