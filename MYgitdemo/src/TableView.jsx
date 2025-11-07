@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Container, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
@@ -10,33 +9,32 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 function TableView() {
-  const [students, setStudents] = useState([]);
-  const [columns, setColumns] = useState([]);
+  const [students, setStudents] = useState(() => {
+    const savedStudents = localStorage.getItem('students');
+    return savedStudents ? JSON.parse(savedStudents) : [];
+  });
+
+  const [columns, setColumns] = useState(() => {
+    const savedColumns = localStorage.getItem('tableColumns');
+    return savedColumns ? JSON.parse(savedColumns) : [];
+  });
+
   const [newColumnName, setNewColumnName] = useState('');
   const [editRowIndex, setEditRowIndex] = useState(null);
   const [editValues, setEditValues] = useState({});
 
   useEffect(() => {
-    loadSavedData();
-  }, []);
+    localStorage.setItem('students', JSON.stringify(students));
+  }, [students]);
 
-  const loadSavedData = () => {
-    const savedStudents = localStorage.getItem('students');
-    const savedColumns = localStorage.getItem('tableColumns');
-
-    if (savedStudents) {
-      setStudents(JSON.parse(savedStudents));
-    }
-    if (savedColumns) {
-      setColumns(JSON.parse(savedColumns));
-    }
-  };
+  useEffect(() => {
+    localStorage.setItem('tableColumns', JSON.stringify(columns));
+  }, [columns]);
 
   const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
 
     const newAccessor = newColumnName.toLowerCase().replace(/\s+/g, '_');
-
     if (columns.some(col => col.accessor === newAccessor)) {
       alert('Column already exists!');
       return;
@@ -45,11 +43,9 @@ function TableView() {
     const newCol = { header: newColumnName, accessor: newAccessor };
     const updatedColumns = [...columns, newCol];
     setColumns(updatedColumns);
-    localStorage.setItem('tableColumns', JSON.stringify(updatedColumns));
 
     const updatedStudents = students.map(s => ({ ...s, [newAccessor]: '' }));
     setStudents(updatedStudents);
-    localStorage.setItem('students', JSON.stringify(updatedStudents));
     setNewColumnName('');
   };
 
@@ -66,7 +62,6 @@ function TableView() {
     const updated = [...students];
     updated[editRowIndex] = editValues;
     setStudents(updated);
-    localStorage.setItem('students', JSON.stringify(updated));
     setEditRowIndex(null);
     setEditValues({});
   };
@@ -74,7 +69,6 @@ function TableView() {
   const handleDelete = (index) => {
     const updated = students.filter((_, i) => i !== index);
     setStudents(updated);
-    localStorage.setItem('students', JSON.stringify(updated));
   };
 
   const handleSaveAll = () => {
@@ -89,19 +83,12 @@ function TableView() {
       return;
     }
 
-    // Create header row
-    const headers = columns.map(col => col.header);
-    const headerLine = headers.join('\t');
-
-    // Create student rows
+    const headers = columns.map(col => col.header).join('\t');
     const rows = students.map(student =>
       columns.map(col => student[col.accessor] || '').join('\t')
     );
+    const tableText = [headers, ...rows].join('\n');
 
-    // Combine all lines
-    const tableText = [headerLine, ...rows].join('\n');
-
-    // Create and download the file
     const blob = new Blob([tableText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
 
@@ -121,9 +108,15 @@ function TableView() {
           value={newColumnName}
           onChange={(e) => setNewColumnName(e.target.value)}
         />
-        <Button variant="contained" onClick={handleAddColumn}>Add Column</Button>
-        <Button variant="outlined" onClick={handleSaveAll}>Save All</Button>
-        <Button variant="outlined" onClick={handleExportToNotepad}>View Saved Table</Button>
+        <Button type="button" variant="contained" onClick={handleAddColumn}>
+          Add Column
+        </Button>
+        <Button type="button" variant="outlined" onClick={handleSaveAll}>
+          Save All
+        </Button>
+        <Button type="button" variant="outlined" onClick={handleExportToNotepad}>
+          View Saved Table
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -154,13 +147,21 @@ function TableView() {
                 <TableCell>
                   {editRowIndex === index ? (
                     <>
-                      <IconButton onClick={handleSave}><SaveIcon /></IconButton>
-                      <IconButton onClick={() => setEditRowIndex(null)}><CancelIcon /></IconButton>
+                      <IconButton type="button" onClick={handleSave}>
+                        <SaveIcon />
+                      </IconButton>
+                      <IconButton type="button" onClick={() => setEditRowIndex(null)}>
+                        <CancelIcon />
+                      </IconButton>
                     </>
                   ) : (
                     <>
-                      <IconButton onClick={() => handleEdit(index)}><EditIcon /></IconButton>
-                      <IconButton onClick={() => handleDelete(index)}><DeleteIcon /></IconButton>
+                      <IconButton type="button" onClick={() => handleEdit(index)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton type="button" onClick={() => handleDelete(index)}>
+                        <DeleteIcon />
+                      </IconButton>
                     </>
                   )}
                 </TableCell>
